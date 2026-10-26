@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --account=curso04
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --job-name=flores-tl
+#SBATCH --time=2-00:00:00
+#SBATCH --partition=cpu
+#SBATCH --output=logs/flores-tl-%j.out
+#SBATCH --error=logs/flores-tl-%j.err
+
+set -euo pipefail
+
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate flores-tl
+mkdir -p logs resultados
+
+python clasificacion_flores_tl.py \
+  --data-dir "${DATASET_DIR:?Define DATASET_DIR con la ruta al proyecto flower_calssification}" \
+  --output-dir resultados \
+  --epochs 15 \
+  --fine-tune-epochs 5 \
+  --batch-size 32

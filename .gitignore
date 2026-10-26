@@ -1,0 +1,13 @@
+# Keep only the 224x224 TFRecords in the repository.
+/tfrecords-jpeg-192x192/
+/tfrecords-jpeg-331x331/
+/tfrecords-jpeg-512x512/
+
+# Local and generated files.
+/articulo_medium.md
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+logs/
+modelo_exportado/

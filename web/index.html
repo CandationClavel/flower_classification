@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clasificador de flores</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; }
+    img { display: block; max-height: 22rem; max-width: 100%; margin: 1rem 0; object-fit: contain; }
+    video { display: block; max-height: 22rem; max-width: 100%; margin: 1rem 0; }
+    button { cursor: pointer; padding: .65rem 1rem; }
+    #result { white-space: pre-wrap; font-size: 1.1rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Clasificador de flores</h1>
+  <p>Selecciona una imagen o toma una fotografía.</p>
+  <input id="fileInput" type="file" accept="image/*" hidden>
+  <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+  <button id="fileButton" type="button">Seleccionar imagen</button>
+  <button id="cameraButton" type="button">Tomar fotografía</button>
+  <section id="cameraPanel" class="hidden">
+    <video id="cameraPreview" autoplay playsinline></video>
+    <button id="captureButton" type="button">Capturar imagen</button>
+    <button id="closeCameraButton" type="button">Cerrar cámara</button>
+  </section>
+  <img id="preview" alt="Vista previa" hidden>
+  <button id="classifyButton" type="button" disabled>Clasificar</button>
+  <p id="result" role="status"></p>
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const cameraInput = document.getElementById("cameraInput");
+    const fileButton = document.getElementById("fileButton");
+    const cameraButton = document.getElementById("cameraButton");
+    const cameraPanel = document.getElementById("cameraPanel");
+    const cameraPreview = document.getElementById("cameraPreview");
+    const captureButton = document.getElementById("captureButton");
+    const closeCameraButton = document.getElementById("closeCameraButton");
+    const preview = document.getElementById("preview");
+    const button = document.getElementById("classifyButton");
+    const result = document.getElementById("result");
+    let selectedFile;
+    let cameraStream;
+
+    function selectImage(event) {
+      selectedFile = event.target.files[0];
+      button.disabled = !selectedFile;
+      if (selectedFile) {
+        preview.src = URL.createObjectURL(selectedFile);
+        preview.hidden = false;
+        result.textContent = "";
+      }
+    }
+
+    fileButton.addEventListener("click", () => fileInput.click());
+    cameraButton.addEventListener("click", async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        cameraInput.click();
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        cameraPreview.srcObject = cameraStream;
+        cameraPanel.classList.remove("hidden");
+        result.textContent = "Cámara activa. Toma una fotografía.";
+      } catch (error) {
+        result.textContent =
+          "No se pudo acceder a la cámara. Revisa los permisos del navegador.";
+      }
+    });
+    captureButton.addEventListener("click", () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = cameraPreview.videoWidth;
+      canvas.height = cameraPreview.videoHeight;
+      canvas.getContext("2d").drawImage(cameraPreview, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          selectedFile = new File([blob], "fotografia.jpg", { type: "image/jpeg" });
+          preview.src = URL.createObjectURL(selectedFile);
+          preview.hidden = false;
+          button.disabled = false;
+          result.textContent = "Fotografía capturada. Presiona Clasificar.";
+        }
+        closeCamera();
+      }, "image/jpeg", 0.92);
+    });
+    closeCameraButton.addEventListener("click", closeCamera);
+
+    function closeCamera() {
+      cameraStream?.getTracks().forEach((track) => track.stop());
+      cameraStream = undefined;
+      cameraPreview.srcObject = null;
+      cameraPanel.classList.add("hidden");
+    }
+
+    fileInput.addEventListener("change", selectImage);
+    cameraInput.addEventListener("change", selectImage);
+
+    button.addEventListener("click", async () => {
+      if (!selectedFile) return;
+      button.disabled = true;
+      result.textContent = "Clasificando...";
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      try {
+        const response = await fetch("/predict", { method: "POST", body: formData });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "No se pudo clasificar.");
+        result.textContent =
+          `Flor: ${data.class_name}\nConfianza: ${(data.confidence * 100).toFixed(2)}%`;
+      } catch (error) {
+        result.textContent = `Error: ${error.message}`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

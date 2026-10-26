@@ -1,0 +1,15 @@
+name: flores-tl
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - tensorflow==2.20.0
+      - numpy>=1.26
+      - matplotlib>=3.8
+      - scikit-learn>=1.4
+      - fastapi>=0.115
+      - uvicorn[standard]>=0.30
+      - python-multipart>=0.0.9
+      - pillow>=10
